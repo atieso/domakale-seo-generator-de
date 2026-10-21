@@ -1,0 +1,20 @@
+{
+  "name": "domakale-seo-generator-de",
+  "version": "0.3.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "check": "node --check server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2",
+    "dotenv": "^16.4.7",
+    "openai": "^6.0.0",
+    "pg": "^8.13.3"
+  }
+}
