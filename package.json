@@ -1,6 +1,6 @@
 {
   "name": "domakale-seo-generator-de",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "private": true,
   "type": "module",
   "engines": {
@@ -9,7 +9,8 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
-    "check": "node --check server.js"
+    "check": "node --check server.js",
+    "cron": "node cron.js"
   },
   "dependencies": {
     "express": "^4.21.2",

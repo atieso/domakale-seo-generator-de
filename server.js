@@ -5,6 +5,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import pg from 'pg';
+import {initAutomation,settings,updateSettings,stats,events,collections,tick,publishShopifyApproved} from './automation.js';
 
 const root=path.dirname(fileURLToPath(import.meta.url));
 const pool=new pg.Pool({connectionString:process.env.DATABASE_URL, max:5, ssl:process.env.PGSSLMODE==='require'?{rejectUnauthorized:false}:undefined});
@@ -58,5 +59,11 @@ app.post('/api/generate/:id',async(req,res,next)=>{try{
 app.put('/api/drafts/:id',async(req,res,next)=>{try{const content=req.body.content;if(!content||typeof content!=='object'||Array.isArray(content))return res.status(400).json({error:'JSON non valido'});const issues=check(content);const row=await update(rows=>{const x=rows.find(r=>r.id===req.params.id);if(!x) return null;x.content=content;x.issues=issues;x.status=issues.length?'da_correggere':'bozza';x.updatedAt=new Date().toISOString();return x});if(!row)return res.status(404).json({error:'Non trovato'});res.json(row)}catch(e){next(e)}});
 app.post('/api/approve/:id',async(req,res,next)=>{try{const row=await update(rows=>{const x=rows.find(r=>r.id===req.params.id);if(!x||!x.content)return null;x.issues=check(x.content);x.status=x.issues.length?'da_correggere':'approvata';x.updatedAt=new Date().toISOString();return x});if(!row)return res.status(404).json({error:'Contenuto assente'});res.json(row)}catch(e){next(e)}});
 app.get('/api/export/:id',async(req,res,next)=>{try{const rows=await read(),r=rows.find(x=>x.id===req.params.id);if(!r||!r.content)return res.status(404).json({error:'Bozza mancante'});const data=Object.fromEntries(keys.map(k=>[k,r.content[k]]));res.setHeader('Content-Disposition',`attachment; filename="${slug(r.keyword)}.json"`);res.type('application/json').send(JSON.stringify(data,null,2))}catch(e){next(e)}});
+app.get('/api/automation/status',async(req,res,next)=>{try{res.json({...await settings(),...await stats(),auto_publish_capable:process.env.ALLOW_AUTO_PUBLISH==='true'})}catch(e){next(e)}});
+app.get('/api/automation/events',async(req,res,next)=>{try{res.json(await events())}catch(e){next(e)}});
+app.put('/api/automation/settings',async(req,res,next)=>{try{res.json(await updateSettings(req.body||{}))}catch(e){next(e)}});
+app.get('/api/shopify/collections',async(req,res,next)=>{try{res.json(await collections())}catch(e){next(e)}});
+app.post('/api/automation/tick',async(req,res,next)=>{try{res.json(await tick())}catch(e){next(e)}});
+app.post('/api/shopify/publish/:id',async(req,res,next)=>{try{res.json(await publishShopifyApproved(req.params.id))}catch(e){next(e)}});
 app.use((err,req,res,next)=>{console.error(err);res.status(500).json({error:err.status===429?'Limite API raggiunto':String(err.message||'Errore').slice(0,300)})});
-initDb().then(()=>{app.listen(Number(process.env.PORT||3000),'0.0.0.0',()=>console.log('DOMAKALE SEO DE Render: port '+(process.env.PORT||3000)));}).catch(err=>{console.error('DATABASE INIT FAILED:',err.message);process.exit(1);});
+Promise.all([initDb(),initAutomation()]).then(()=>{app.listen(Number(process.env.PORT||3000),'0.0.0.0',()=>console.log('DOMAKALE SEO DE Render: port '+(process.env.PORT||3000)));}).catch(err=>{console.error('DATABASE INIT FAILED:',err.message);process.exit(1);});
